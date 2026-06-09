@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "TaskBoard",
   description:
     "TaskBoard is a clean, professional task tracker for instructors, students, and administrators.",
+  icons: {
+    icon: "/icon.png",
+  },
 };
 
 export default function RootLayout({
