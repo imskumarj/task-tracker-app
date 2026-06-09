@@ -1,38 +1,51 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { ClipboardCheck, GraduationCap, Briefcase, Loader2 } from "lucide-react";
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+import {
+  useAuth
+} from "@/context/AuthContext";
+
+import {
+  ClipboardCheck,
+  GraduationCap,
+  Briefcase,
+  Loader2,
+} from "lucide-react";
+
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth-context";
-import { LoadingScreen } from "@/components/LoadingScreen";
+
+import { LoadingScreen } from "@/components/common/LoadingScreen";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
-export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "TaskBoard — Sign in" },
-      { name: "description", content: "TaskBoard is a clean, professional task tracker for instructors, students, and administrators." },
-    ],
-  }),
-  component: AuthPage,
-});
-
-function AuthPage() {
-  const { session, profile, loading } = useAuth();
-  const navigate = useNavigate();
+export default function AuthPage() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading && session && profile) {
-      const dest = profile.role === "admin" ? "/admin" : profile.role === "instructor" ? "/instructor" : "/student";
-      navigate({ to: dest });
+    if (!loading && user) {
+      if (user.role === "admin") {
+        router.push("/admin");
+      } else if (user.role === "instructor") {
+        router.push("/instructor");
+      } else if (user.role === "student") {
+        router.push("/student");
+      }
     }
-  }, [session, profile, loading, navigate]);
+  }, [user, loading, router]);
 
-  if (loading) return <LoadingScreen label="Starting up" />;
-  if (session && profile) return <LoadingScreen label="Loading your workspace" />;
+  if (loading) {
+    return <LoadingScreen label="Starting up" />;
+  }
 
   return (
     <div className="min-h-screen grid md:grid-cols-[1.05fr_1fr]">
@@ -106,17 +119,40 @@ function Feature({ icon, label }: { icon: React.ReactNode; label: string }) {
 }
 
 function LoginForm() {
+  const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setBusy(false);
-    if (error) toast.error(error.message);
-    else toast.success("Welcome back");
+
+    try {
+      const data = await login(
+        email,
+        password
+      );
+
+      toast.success("Welcome back");
+
+      if (data.user.role === "admin") {
+        router.push("/admin");
+      } else if (data.user.role === "instructor") {
+        router.push("/instructor");
+      } else {
+        router.push("/student");
+      }
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ??
+        "Login failed"
+      );
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -139,6 +175,7 @@ function LoginForm() {
 }
 
 function RegisterForm() {
+  const { register } = useAuth();
   const [role, setRole] = useState<"instructor" | "student">("student");
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
@@ -155,27 +192,38 @@ function RegisterForm() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     setBusy(true);
-    const { error } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`,
-        data: {
-          full_name: form.full_name,
-          phone: form.phone,
-          role,
-          college: role === "student" ? form.college : null,
-          semester: role === "student" ? form.semester : null,
-        },
-      },
-    });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    if (role === "instructor") {
-      toast.success("Account created — awaiting admin approval");
-    } else {
-      toast.success("Account created — you're signed in");
+
+    try {
+      await register({
+        ...form,
+        role,
+      });
+
+      toast.success(
+        role === "instructor"
+          ? "Account created — awaiting admin approval"
+          : "Account created successfully"
+      );
+
+      setForm({
+        full_name: "",
+        email: "",
+        phone: "",
+        password: "",
+        college: "",
+        semester: "",
+      });
+
+      setRole("student");
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ??
+          "Registration failed"
+      );
+    } finally {
+      setBusy(false);
     }
   };
 
