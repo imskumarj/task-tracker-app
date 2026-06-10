@@ -1,56 +1,61 @@
 import { api } from "./api";
 
-export const getPendingStudents = async () => {
-  const response = await api.get(
-    "/admin/students/pending"
-  );
+export const getStudents =
+  async () => {
+    const response =
+      await api.get(
+        "/admin/students"
+      );
 
-  return response.data;
-};
+    return response.data;
+  };
 
-export const getPendingInstructors = async () => {
-  const response = await api.get(
-    "/admin/instructors/pending"
-  );
+export const getInstructors =
+  async () => {
+    const response =
+      await api.get(
+        "/admin/instructors"
+      );
 
-  return response.data;
-};
+    return response.data;
+  };
 
-export const approveStudent = async (
-  id: string
-) => {
-  const response = await api.patch(
-    `/admin/students/${id}/approve`
-  );
+export const approveStudent =
+  async (id: string) => {
+    const response =
+      await api.patch(
+        `/admin/students/${id}/approve`
+      );
 
-  return response.data;
-};
+    return response.data;
+  };
 
-export const approveInstructor = async (
-  id: string
-) => {
-  const response = await api.patch(
-    `/admin/instructors/${id}/approve`
-  );
+export const approveInstructor =
+  async (id: string) => {
+    const response =
+      await api.patch(
+        `/admin/instructors/${id}/approve`
+      );
 
-  return response.data;
-};
+    return response.data;
+  };
 
-export const deleteStudent = async (
-  id: string
-) => {
-  const response = await api.delete(
-    `/admin/students/${id}`
-  );
+export const deleteStudent =
+  async (id: string) => {
+    const response =
+      await api.delete(
+        `/admin/students/${id}`
+      );
 
-  return response.data;
-};
+    return response.data;
+  };
 
 export const deleteInstructor =
   async (id: string) => {
-    const response = await api.delete(
-      `/admin/instructors/${id}`
-    );
+    const response =
+      await api.delete(
+        `/admin/instructors/${id}`
+      );
 
     return response.data;
   };

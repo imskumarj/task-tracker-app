@@ -3,6 +3,57 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+export const getStudents = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const students =
+      await prisma.student.findMany({
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+    return res.json({
+      success: true,
+      students,
+    });
+  } catch {
+    return res.status(500).json({
+      success: false,
+      message:
+        "Unable to fetch students",
+    });
+  }
+};
+
+export const getInstructors =
+  async (
+    req: Request,
+    res: Response
+  ) => {
+    try {
+      const instructors =
+        await prisma.instructor.findMany({
+          orderBy: {
+            createdAt: "desc",
+          },
+        });
+
+      return res.json({
+        success: true,
+        instructors,
+      });
+    } catch {
+      return res.status(500).json({
+        success: false,
+        message:
+          "Unable to fetch instructors",
+      });
+    }
+  };
+  
 export const getPendingStudents =
   async (
     req: Request,

@@ -9,6 +9,8 @@ import {
   deleteInstructor,
   getApprovedStudents,
   getApprovedInstructors,
+  getStudents,
+  getInstructors,
 } from "../controllers/admin";
 
 import {
@@ -24,6 +26,16 @@ const router = Router();
 router.use(
   authenticate,
   adminOnly
+);
+
+router.get(
+  "/students",
+  getStudents
+);
+
+router.get(
+  "/instructors",
+  getInstructors
 );
 
 router.get(
