@@ -1,211 +1,782 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { useAuth } from "@/context/AuthContext";
+
+import {
+  getStudentProfile,
+} from "@/services/student";
+
+import {
+  getStudentTasks,
+  StudentTask,
+} from "@/services/task";
+
+import {
+  getStudentResources,
+  StudentResource,
+} from "@/services/resource";
+
+import {
+  ClipboardList,
+  BookOpen,
+  User,
+  FileText,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Clock3,
+  RefreshCcw,
+  LogOut,
+} from "lucide-react";
+
 import { toast } from "sonner";
-import { ClipboardList, BookOpen, Lock, FileText, Loader2, Upload, CheckCircle2, AlertCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth-context";
-import { AppShell } from "@/components/layout/AppShell";
-import { LoadingScreen } from "@/components/common/LoadingScreen";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { uploadTaskDocument } from "@/lib/upload";
 
-export const Route = createFileRoute("/student")({
-  head: () => ({ meta: [{ title: "Student — TaskBoard" }] }),
-  component: StudentPage,
-});
+import { LoadingScreen } from "@/components/common/LoadingScreen";
 
-function StudentPage() {
-  const { loading, session, profile } = useAuth();
-  if (loading) return <LoadingScreen label="Verifying access" />;
-  if (!session) return <Navigate to="/" />;
-  if (profile?.role !== "student") return <Navigate to="/" />;
+import SubmitTaskModal from "@/components/student/SubmitTaskModal";
 
-  return (
-    <AppShell title={`Hello, ${profile.full_name.split(" ")[0]}`} subtitle="Your tasks, submissions, and shared resources.">
-      <Tabs defaultValue="tasks" className="space-y-6">
-        <TabsList className="h-11">
-          <TabsTrigger value="tasks" className="gap-2"><ClipboardList className="h-4 w-4" />My tasks</TabsTrigger>
-          <TabsTrigger value="resources" className="gap-2"><BookOpen className="h-4 w-4" />Resources</TabsTrigger>
-        </TabsList>
-        <TabsContent value="tasks"><MyTasks /></TabsContent>
-        <TabsContent value="resources"><MyResources /></TabsContent>
-      </Tabs>
-    </AppShell>
-  );
-}
+type TaskFilter =
+  | "all"
+  | "assigned"
+  | "submitted"
+  | "resubmit"
+  | "evaluated";
 
-function MyTasks() {
-  const { user } = useAuth();
-  const { data, isLoading } = useQuery({
-    queryKey: ["student-tasks", user?.id],
-    queryFn: async () => {
-      const { data: tasks, error } = await supabase
-        .from("tasks")
-        .select("*, profiles!tasks_instructor_id_fkey(full_name)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      const ids = (tasks ?? []).map((t) => t.id);
-      if (ids.length === 0) return [];
-      const { data: subs } = await supabase
-        .from("submissions")
-        .select("*, evaluations(*)")
-        .eq("student_id", user!.id)
-        .in("task_id", ids)
-        .order("attempt_number", { ascending: false });
-      return tasks!.map((t) => {
-        const taskSubs = (subs ?? []).filter((s) => s.task_id === t.id);
-        return { ...t, submissions: taskSubs };
-      });
-    },
-    enabled: !!user,
-  });
+export default function StudentPage() {
+  const router = useRouter();
 
-  if (isLoading) return <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-32 rounded-lg bg-muted animate-shimmer" />)}</div>;
-  if (!data || data.length === 0) {
-    return <Card className="p-12 text-center"><ClipboardList className="h-10 w-10 mx-auto text-muted-foreground" /><p className="mt-3 text-sm text-muted-foreground">No tasks assigned yet.</p></Card>;
-  }
+  const {
+    user,
+    loading,
+    authenticated,
+    logout,
+  } = useAuth();
 
-  return (
-    <div className="grid gap-3">
-      {data.map((t: any) => <TaskCard key={t.id} task={t} />)}
-    </div>
-  );
-}
+  const [profile, setProfile] =
+    useState<any>(null);
 
-function TaskCard({ task }: { task: any }) {
-  const [open, setOpen] = useState(false);
-  const latestSub = task.submissions?.[0];
-  const latestEval = latestSub?.evaluations;
-  // Locked when there's a submission without a "needs_resubmit" evaluation
-  const locked = latestSub && (!latestEval || latestEval.status === "evaluated");
-  const needsResubmit = latestEval?.status === "needs_resubmit";
+  const [tasks, setTasks] =
+    useState<StudentTask[]>([]);
 
-  return (
-    <Card className="p-5">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-semibold text-lg">{task.title}</h3>
-            {locked && <Badge className="bg-success/15 text-success border-success/30"><Lock className="h-3 w-3 mr-1" />Submitted</Badge>}
-            {needsResubmit && <Badge className="bg-warning/20 text-warning-foreground border-warning/40"><AlertCircle className="h-3 w-3 mr-1" />Resubmit</Badge>}
-            {!latestSub && <Badge variant="secondary">Pending</Badge>}
-            {task.due_date && <Badge variant="outline">Due {new Date(task.due_date).toLocaleDateString()}</Badge>}
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">From {task.profiles?.full_name ?? "Instructor"}</p>
-          {task.content && <p className="mt-3 text-sm whitespace-pre-wrap">{task.content}</p>}
-          {task.document_url && <a href={task.document_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-xs text-primary hover:underline"><FileText className="h-3.5 w-3.5" />Task attachment</a>}
-        </div>
-      </div>
+  const [resources, setResources] =
+    useState<StudentResource[]>([]);
 
-      {latestEval && (
-        <div className="mt-4 p-3 rounded-lg bg-muted/50 border">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            {latestEval.status === "needs_resubmit" ? <AlertCircle className="h-4 w-4 text-warning-foreground" /> : <CheckCircle2 className="h-4 w-4 text-success" />}
-            Instructor feedback {latestEval.grade && <span className="text-muted-foreground font-normal">· Grade: {latestEval.grade}</span>}
-          </div>
-          {latestEval.feedback && <p className="mt-1 text-sm text-foreground/80 whitespace-pre-wrap">{latestEval.feedback}</p>}
-        </div>
-      )}
+  const [busy, setBusy] =
+    useState(true);
 
-      <div className="mt-4 flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">
-          {latestSub ? `Last submitted ${new Date(latestSub.created_at).toLocaleString()}` : "No submission yet"}
-        </span>
-        {locked ? (
-          <Button variant="outline" size="sm" disabled><Lock className="h-4 w-4 mr-1.5" />Locked</Button>
-        ) : (
-          <Button size="sm" onClick={() => setOpen(true)}><Upload className="h-4 w-4 mr-1.5" />{needsResubmit ? "Resubmit" : "Submit response"}</Button>
-        )}
-      </div>
+  const [taskFilter, setTaskFilter] =
+    useState<TaskFilter>("all");
 
-      <SubmitDialog open={open} onOpenChange={setOpen} task={task} attempt={(latestSub?.attempt_number ?? 0) + 1} />
-    </Card>
-  );
-}
-
-function SubmitDialog({ open, onOpenChange, task, attempt }: any) {
-  const qc = useQueryClient();
-  const { user } = useAuth();
-  const [content, setContent] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const submit = async () => {
-    if (!content.trim() && !file) return toast.error("Add a response or file");
-    setBusy(true);
+  const loadData = async () => {
     try {
-      let documentUrl: string | null = null;
-      if (file) documentUrl = await uploadTaskDocument(file, user!.id);
-      const { error } = await supabase.from("submissions").insert({
-        task_id: task.id, student_id: user!.id, attempt_number: attempt, content: content.trim() || null, document_url: documentUrl,
-      });
-      if (error) throw error;
-      toast.success("Submitted");
-      qc.invalidateQueries({ queryKey: ["student-tasks"] });
-      onOpenChange(false); setContent(""); setFile(null);
-    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+      setBusy(true);
+
+      const results =
+        await Promise.allSettled([
+          getStudentProfile(),
+          getStudentTasks(),
+          getStudentResources(),
+        ]);
+
+      const profileRes =
+        results[0].status === "fulfilled"
+          ? results[0].value
+          : null;
+
+      const tasksRes =
+        results[1].status === "fulfilled"
+          ? results[1].value
+          : null;
+
+      const resourcesRes =
+        results[2].status === "fulfilled"
+          ? results[2].value
+          : null;
+
+      if (profileRes) {
+        setProfile(profileRes.student);
+      }
+
+      if (tasksRes) {
+        setTasks(tasksRes.tasks || []);
+      }
+
+      if (resourcesRes) {
+        setResources(
+          resourcesRes.resources || []
+        );
+      }
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ??
+          "Unable to load dashboard"
+      );
+    } finally {
+      setBusy(false);
+    }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Submit your response</DialogTitle>
-          <DialogDescription>{task.title} — attempt #{attempt}</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-1.5"><Label>Your response</Label><Textarea value={content} onChange={(e) => setContent(e.target.value)} rows={6} placeholder="Write your response..." /></div>
-          <div className="space-y-1.5"><Label>Attach a document (optional)</Label><Input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="h-11" /></div>
-          <p className="text-xs text-muted-foreground">Once submitted, your response is locked until your instructor reviews it.</p>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
+  useEffect(() => {
+    if (!loading && !authenticated) {
+      router.replace("/");
+    }
+  }, [
+    loading,
+    authenticated,
+    router,
+  ]);
 
-function MyResources() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["student-resources"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("resources")
-        .select("*, profiles!resources_instructor_id_fkey(full_name)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
+  useEffect(() => {
+    if (authenticated) {
+      loadData();
+    }
+  }, [authenticated]);
 
-  if (isLoading) return <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-20 rounded-lg bg-muted animate-shimmer" />)}</div>;
-  if (!data || data.length === 0) {
-    return <Card className="p-12 text-center"><BookOpen className="h-10 w-10 mx-auto text-muted-foreground" /><p className="mt-3 text-sm text-muted-foreground">No resources shared yet.</p></Card>;
+  const filteredTasks =
+    useMemo(() => {
+      if (taskFilter === "all")
+        return tasks;
+
+      return tasks.filter(
+        (task) =>
+          task.status === taskFilter
+      );
+    }, [tasks, taskFilter]);
+
+  if (loading || busy) {
+    return (
+      <LoadingScreen label="Loading dashboard" />
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  if (
+    profile &&
+    profile?.status?.toLowerCase() === "pending"
+  ) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <Card className="max-w-lg w-full p-8 text-center">
+          <Clock3 className="h-12 w-12 mx-auto text-amber-500" />
+
+          <h1 className="mt-4 text-2xl font-bold">
+            Account Approval Pending
+          </h1>
+
+          <p className="mt-3 text-muted-foreground">
+            Your account is awaiting
+            approval from the organisation.
+            Once approved, you'll gain
+            access to tasks, resources,
+            and submissions.
+          </p>
+
+          <Button
+            variant="outline"
+            className="mt-6"
+            onClick={logout}
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <div className="grid gap-3">
-      {data.map((r: any) => (
-        <Card key={r.id} className="p-4 flex items-start gap-4">
-          <div className="h-10 w-10 rounded-lg bg-accent text-accent-foreground flex items-center justify-center"><BookOpen className="h-5 w-5" /></div>
-          <div className="flex-1">
-            <h4 className="font-semibold">{r.title}</h4>
-            <p className="text-xs text-muted-foreground">From {r.profiles?.full_name ?? "Instructor"} · {new Date(r.created_at).toLocaleDateString()}</p>
-            {r.description && <p className="mt-1.5 text-sm">{r.description}</p>}
-            {r.document_url && <a href={r.document_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-xs text-primary hover:underline"><FileText className="h-3.5 w-3.5" />Open file</a>}
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+
+      <div className="border-b">
+        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">
+              Hello, {profile?.name ?? "Student"}
+            </h1>
+
+            <p className="text-sm text-muted-foreground">
+              SUID: {profile?.suid}
+            </p>
           </div>
-        </Card>
-      ))}
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={loadData}
+            >
+              <RefreshCcw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={logout}
+            >
+              Logout
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main */}
+
+      <div className="max-w-7xl mx-auto p-6">
+        <Tabs
+          defaultValue="tasks"
+          className="space-y-6"
+        >
+          <TabsList>
+            <TabsTrigger value="tasks">
+              <ClipboardList className="h-4 w-4 mr-2" />
+              My Tasks
+            </TabsTrigger>
+
+            <TabsTrigger value="resources">
+              <BookOpen className="h-4 w-4 mr-2" />
+              Resources
+            </TabsTrigger>
+
+            <TabsTrigger value="profile">
+              <User className="h-4 w-4 mr-2" />
+              Profile
+            </TabsTrigger>
+          </TabsList>
+                    {/* TASKS TAB */}
+
+          <TabsContent value="tasks">
+            <div className="space-y-5">
+
+              {/* Filters */}
+
+              <div className="flex flex-wrap gap-2">
+
+                <Button
+                  size="sm"
+                  variant={
+                    taskFilter === "all"
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={() =>
+                    setTaskFilter("all")
+                  }
+                >
+                  All
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant={
+                    taskFilter ===
+                    "assigned"
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={() =>
+                    setTaskFilter(
+                      "assigned"
+                    )
+                  }
+                >
+                  Pending
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant={
+                    taskFilter ===
+                    "submitted"
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={() =>
+                    setTaskFilter(
+                      "submitted"
+                    )
+                  }
+                >
+                  Submitted
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant={
+                    taskFilter ===
+                    "resubmit"
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={() =>
+                    setTaskFilter(
+                      "resubmit"
+                    )
+                  }
+                >
+                  Resubmission Needed
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant={
+                    taskFilter ===
+                    "evaluated"
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={() =>
+                    setTaskFilter(
+                      "evaluated"
+                    )
+                  }
+                >
+                  Evaluated
+                </Button>
+              </div>
+
+              {filteredTasks.length === 0 ? (
+                <Card className="p-10 text-center">
+                  <ClipboardList className="h-10 w-10 mx-auto text-muted-foreground" />
+
+                  <h3 className="mt-4 font-semibold">
+                    No tasks found
+                  </h3>
+
+                  <p className="text-sm text-muted-foreground mt-1">
+                    No tasks available
+                    under this filter.
+                  </p>
+                </Card>
+              ) : (
+                <div className="grid gap-4">
+                  {filteredTasks.map(
+                    (task) => {
+                      const latestEvaluation =
+                        task.evaluations?.at(-1);
+
+                      return (
+                        <Card
+                          key={task.tuid}
+                          className="p-5"
+                        >
+                          <div className="flex flex-col gap-4">
+
+                            {/* Header */}
+
+                            <div className="flex flex-wrap justify-between gap-3">
+                              <div>
+                                <h3 className="font-semibold text-lg">
+                                  {task.title}
+                                </h3>
+
+                                <p className="text-xs text-muted-foreground">
+                                  Assigned by{" "}
+                                  {
+                                    task
+                                      .instructor
+                                      ?.name
+                                  }
+                                </p>
+                              </div>
+
+                              <div>
+
+                                {task.status ===
+                                  "assigned" && (
+                                  <Badge variant="secondary">
+                                    Pending
+                                  </Badge>
+                                )}
+
+                                {task.status ===
+                                  "submitted" && (
+                                  <Badge>
+                                    Submitted
+                                  </Badge>
+                                )}
+
+                                {task.status ===
+                                  "resubmit" && (
+                                  <Badge
+                                    variant="outline"
+                                  >
+                                    Resubmit
+                                  </Badge>
+                                )}
+
+                                {task.status ===
+                                  "evaluated" && (
+                                  <Badge>
+                                    Evaluated
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Content */}
+
+                            {task.content && (
+                              <p className="text-sm whitespace-pre-wrap">
+                                {
+                                  task.content
+                                }
+                              </p>
+                            )}
+
+                            {/* Attachment */}
+
+                            {task.document_url && (
+                              <a
+                                href={
+                                  task.document_url
+                                }
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-sm text-primary hover:underline inline-flex items-center gap-2"
+                              >
+                                <FileText className="h-4 w-4" />
+                                Open Task
+                                Attachment
+                              </a>
+                            )}
+
+                            {/* Evaluation */}
+
+                            {latestEvaluation && (
+                              <div className="border rounded-lg p-4 bg-muted/40">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+
+                                  <span className="font-medium">
+                                    Instructor
+                                    Evaluation
+                                  </span>
+                                </div>
+
+                                <p className="text-sm whitespace-pre-wrap">
+                                  {
+                                    latestEvaluation.remarks
+                                  }
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Footer */}
+
+                            <div className="flex flex-wrap gap-2">
+
+                              {task.status ===
+                                "assigned" && (
+                                <SubmitTaskModal
+                                  task={task}
+                                  onSuccess={
+                                    loadData
+                                  }
+                                />
+                              )}
+
+                              {task.status ===
+                                "submitted" && (
+                                <Button
+                                  disabled
+                                >
+                                  Waiting
+                                  for Review
+                                </Button>
+                              )}
+
+                              {task.status ===
+                                "resubmit" && (
+                                <SubmitTaskModal
+                                  task={task}
+                                  onSuccess={
+                                    loadData
+                                  }
+                                  resubmit
+                                />
+                              )}
+
+                              {task.status ===
+                                "evaluated" && (
+                                <Button
+                                  disabled
+                                >
+                                  Completed
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      );
+                    }
+                  )}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* RESOURCES TAB */}
+
+          <TabsContent value="resources">
+            <div className="space-y-4">
+
+              {resources.length ===
+              0 ? (
+                <Card className="p-10 text-center">
+                  <BookOpen className="h-10 w-10 mx-auto text-muted-foreground" />
+
+                  <h3 className="mt-4 font-semibold">
+                    No Resources
+                  </h3>
+
+                  <p className="text-sm text-muted-foreground">
+                    Your instructors
+                    haven't shared any
+                    resources yet.
+                  </p>
+                </Card>
+              ) : (
+                resources.map(
+                  (resource) => (
+                    <Card
+                      key={
+                        resource.ruid
+                      }
+                      className="p-5"
+                    >
+                      <div className="flex gap-4">
+                        <BookOpen className="h-8 w-8 text-primary mt-1" />
+
+                        <div className="flex-1">
+                          <h3 className="font-semibold">
+                            {
+                              resource.title
+                            }
+                          </h3>
+
+                          <p className="text-xs text-muted-foreground">
+                            Shared by{" "}
+                            {
+                              resource
+                                .instructor
+                                ?.name
+                            }
+                          </p>
+
+                          {resource.description && (
+                            <p className="mt-3 text-sm">
+                              {
+                                resource.description
+                              }
+                            </p>
+                          )}
+
+                          {resource.document_url && (
+                            <a
+                              href={
+                                resource.document_url
+                              }
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-3 inline-flex items-center gap-2 text-primary hover:underline"
+                            >
+                              <FileText className="h-4 w-4" />
+                              Open
+                              Resource
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  )
+                )
+              )}
+            </div>
+          </TabsContent>
+                    {/* PROFILE TAB */}
+
+          <TabsContent value="profile">
+            <Card className="p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <User className="h-6 w-6" />
+
+                <div>
+                  <h2 className="font-semibold text-lg">
+                    Student Profile
+                  </h2>
+
+                  <p className="text-sm text-muted-foreground">
+                    Read-only account information
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-5">
+
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Student UID
+                  </p>
+
+                  <p className="font-medium">
+                    {profile?.suid}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Full Name
+                  </p>
+
+                  <p className="font-medium">
+                    {profile?.name}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    College
+                  </p>
+
+                  <p className="font-medium">
+                    {profile?.clg}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Semester
+                  </p>
+
+                  <p className="font-medium">
+                    {profile?.sem}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Email
+                  </p>
+
+                  <p className="font-medium">
+                    {profile?.email}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Phone
+                  </p>
+
+                  <p className="font-medium">
+                    {profile?.phone}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Account Status
+                  </p>
+
+                  <div className="mt-1">
+                    <Badge>
+                      {profile?.status}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 pt-6 border-t">
+
+                <h3 className="font-medium mb-3">
+                  Dashboard Statistics
+                </h3>
+
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                  <Card className="p-4">
+                    <p className="text-xs text-muted-foreground">
+                      Total Tasks
+                    </p>
+
+                    <p className="text-2xl font-bold mt-1">
+                      {tasks.length}
+                    </p>
+                  </Card>
+
+                  <Card className="p-4">
+                    <p className="text-xs text-muted-foreground">
+                      Pending Tasks
+                    </p>
+
+                    <p className="text-2xl font-bold mt-1">
+                      {
+                        tasks.filter(
+                          (t) =>
+                            t.status ===
+                            "assigned"
+                        ).length
+                      }
+                    </p>
+                  </Card>
+
+                  <Card className="p-4">
+                    <p className="text-xs text-muted-foreground">
+                      Submitted
+                    </p>
+
+                    <p className="text-2xl font-bold mt-1">
+                      {
+                        tasks.filter(
+                          (t) =>
+                            t.status ===
+                            "submitted"
+                        ).length
+                      }
+                    </p>
+                  </Card>
+
+                  <Card className="p-4">
+                    <p className="text-xs text-muted-foreground">
+                      Evaluated
+                    </p>
+
+                    <p className="text-2xl font-bold mt-1">
+                      {
+                        tasks.filter(
+                          (t) =>
+                            t.status ===
+                            "evaluated"
+                        ).length
+                      }
+                    </p>
+                  </Card>
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
+
+        </Tabs>
+      </div>
     </div>
   );
 }

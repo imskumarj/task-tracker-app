@@ -38,9 +38,18 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+
 export default function AuthPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const [tab, setTab] = useState("login");
 
   useEffect(() => {
     if (!loading && user) {
@@ -102,7 +111,7 @@ export default function AuthPage() {
             <span className="text-lg font-display font-bold">TaskBoard</span>
           </div>
 
-          <Tabs defaultValue="login" className="w-full">
+          <Tabs value={tab} onValueChange={setTab} className="w-full" >
             <TabsList className="grid grid-cols-2 w-full h-11">
               <TabsTrigger value="login" className="text-sm">Sign in</TabsTrigger>
               <TabsTrigger value="register" className="text-sm">Create account</TabsTrigger>
@@ -111,7 +120,11 @@ export default function AuthPage() {
               <LoginForm />
             </TabsContent>
             <TabsContent value="register" className="mt-6">
-              <RegisterForm />
+              <RegisterForm
+                onRegistrationSuccess={() =>
+                  setTab("login")
+                }
+              />
             </TabsContent>
           </Tabs>
         </div>
@@ -146,6 +159,11 @@ function LoginForm() {
   const [fpPassword, setFpPassword] = useState("");
 
   const [timer, setTimer] = useState(0);
+
+  const [
+    approvalModalOpen,
+    setApprovalModalOpen,
+  ] = useState(false);
 
   useEffect(() => {
     if (timer <= 0) return;
@@ -184,11 +202,21 @@ function LoginForm() {
         router.push("/student");
       }
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message ??
-          "Login failed"
-      );
-    } finally {
+        const message =
+          error?.response?.data?.message;
+
+        if (
+          message ===
+          "Account awaiting approval"
+        ) {
+          setApprovalModalOpen(true);
+          return;
+        }
+
+        toast.error(
+          message ?? "Login failed"
+        );
+      } finally {
       setBusy(false);
     }
   };
@@ -509,11 +537,45 @@ function LoginForm() {
           "Sign in"
         )}
       </Button>
+
+      <Dialog
+        open={approvalModalOpen}
+        onOpenChange={
+          setApprovalModalOpen
+        }
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Approval Required
+            </DialogTitle>
+
+            <DialogDescription>
+              Your account has been
+              registered successfully,
+              but is still awaiting
+              administrator approval.
+
+              <br />
+              <br />
+
+              You will be able to
+              access TaskBoard once
+              an administrator approves
+              your account.
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }
 
-function RegisterForm() {
+function RegisterForm({
+  onRegistrationSuccess,
+}: {
+  onRegistrationSuccess: () => void;
+}) {
   const { register } = useAuth();
   const [role, setRole] = useState<"instructor" | "student">("student");
   const [busy, setBusy] = useState(false);
@@ -523,7 +585,7 @@ function RegisterForm() {
     useState(false);
   const [timer, setTimer] = useState(0);
   const [form, setForm] = useState({
-    full_name: "",
+    name: "",
     email: "",
     phone: "",
     password: "",
@@ -661,13 +723,13 @@ function RegisterForm() {
       });
 
       toast.success(
-        role === "instructor"
-          ? "Account created — awaiting admin approval"
-          : "Account created successfully"
+        "Account created successfully. Awaiting administrator approval."
       );
 
+      onRegistrationSuccess();
+
       setForm({
-        full_name: "",
+        name: "",
         email: "",
         phone: "",
         password: "",
@@ -680,6 +742,10 @@ function RegisterForm() {
       setOtp("");
       setOtpVerified(false);
       setTimer(0);
+
+      toast.info(
+        "Your account is pending admin approval. You'll be able to sign in once approved."
+      );
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ??
@@ -701,7 +767,7 @@ function RegisterForm() {
       </div>
 
       <div className="grid grid-cols-1 gap-3">
-        <Field label="Full name"><Input required value={form.full_name} onChange={set("full_name")} className="h-11" /></Field>
+        <Field label="Full name"><Input required value={form.name} onChange={set("name")} className="h-11" /></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Email"><Input required type="email" disabled={step === 2 || otpVerified} value={form.email} onChange={set("email")} className="h-11" /></Field>
           <Field label="Phone"><Input required value={form.phone} onChange={set("phone")} className="h-11" /></Field>

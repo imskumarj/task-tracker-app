@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model RegisterOtp {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  otp       String
+  verified  Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model ForgotOtp {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  otp       String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Instructor {
+  id        String   @id @default(cuid())
+  iuid      String   @unique
+  name      String
+  phone     String
+  email     String   @unique
+  password  String
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Student {
+  id        String   @id @default(cuid())
+  suid      String   @unique
+  name      String
+  college   String
+  semester  String
+  phone     String
+  email     String   @unique
+  password  String
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
