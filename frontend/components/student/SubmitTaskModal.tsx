@@ -69,8 +69,12 @@ export default function SubmitTaskModal({
       let documentUrl: string | undefined;
 
       if (file) {
-        documentUrl = await uploadTaskDocument(file);
-      }
+        documentUrl =
+          await uploadTaskDocument(
+            file,
+            "submissions"
+          );
+        }
 
       await submitTask(
         task.tuid,

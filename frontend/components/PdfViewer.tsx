@@ -1,13 +1,5 @@
 "use client";
 
-import { Document, Page, pdfjs } from "react-pdf";
-
-pdfjs.GlobalWorkerOptions.workerSrc =
-  new URL(
-    "pdfjs-dist/build/pdf.worker.min.mjs",
-    import.meta.url
-  ).toString();
-
 export default function PdfViewer({
   url,
 }: {
@@ -15,9 +7,11 @@ export default function PdfViewer({
 }) {
   return (
     <div className="border rounded-lg overflow-hidden">
-      <Document file={url}>
-        <Page pageNumber={1} />
-      </Document>
+      <iframe
+        src={url}
+        className="w-full h-[700px]"
+        title="PDF Viewer"
+      />
     </div>
   );
 }

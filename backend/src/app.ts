@@ -6,7 +6,7 @@ import adminRoutes from "./routes/admin";
 import studentRoutes from "./routes/student";
 import instructorRoutes from "./routes/instructor";
 import resourceRoutes from "./routes/resource";
-// import uploadRoutes from "./routes/uploads";
+import uploadRoutes from "./routes/upload";
 
 const app = express();
 
@@ -93,9 +93,9 @@ app.use(
 |--------------------------------------------------------------------------
 */
 
-// app.use(
-//   "/api/uploads",
-//   uploadRoutes
-// );
+app.use(
+  "/api/files",
+  uploadRoutes
+);
 
 export default app;

@@ -1,26 +1,40 @@
-import { api } from "@/services/api";
+import { api }
+from "@/services/api";
 
-export const uploadTaskDocument = async (
-  file: File
-): Promise<string> => {
-  const formData = new FormData();
+export const uploadTaskDocument =
+  async (
+    file: File,
+    category:
+      | "tasks"
+      | "resources"
+      | "submissions" =
+      "submissions"
+  ) => {
 
-  formData.append(
-    "file",
-    file
-  );
+    const formData =
+      new FormData();
 
-  const { data } =
-    await api.post(
-      "/files/upload",
-      formData,
-      {
-        headers: {
-          "Content-Type":
-            "multipart/form-data",
-        },
-      }
+    formData.append(
+      "file",
+      file
     );
 
-  return data.url;
-};
+    formData.append(
+      "category",
+      category
+    );
+
+    const { data } =
+      await api.post(
+        "/files/upload",
+        formData,
+        {
+          headers: {
+            "Content-Type":
+              "multipart/form-data",
+          },
+        }
+      );
+
+    return data.url;
+  };

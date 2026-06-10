@@ -1392,7 +1392,8 @@ function CreateResourceDialog({
       if (file) {
         documentUrl =
           await uploadTaskDocument(
-            file
+            file,
+            "resources"
           );
       }
 

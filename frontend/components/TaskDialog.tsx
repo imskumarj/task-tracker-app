@@ -115,7 +115,8 @@ export default function TaskDialog({
       if (file) {
         documentUrl =
           await uploadTaskDocument(
-            file
+            file,
+            "tasks"
           );
       }
 
