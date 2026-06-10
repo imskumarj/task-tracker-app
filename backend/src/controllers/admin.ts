@@ -184,61 +184,144 @@ export const approveInstructor =
     }
   };
 
-export const deleteStudent =
-  async (
-    req: Request,
-    res: Response
-  ) => {
-    try {
-      const id = req.params.id as string;
+export const deleteStudent = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const id = req.params.id as string;
 
-      await prisma.student.delete({
+    const student =
+      await prisma.student.findUnique({
         where: { id },
+        select: {
+          suid: true,
+        },
       });
 
-      return res.json({
-        success: true,
-        message:
-          "Student removed",
-      });
-    } catch (error) {
-      console.error(error);
-
-      return res.status(500).json({
+    if (!student) {
+      return res.status(404).json({
         success: false,
-        message:
-          "Unable to remove student",
+        message: "Student not found",
       });
     }
-  };
 
-export const deleteInstructor =
-  async (
-    req: Request,
-    res: Response
-  ) => {
-    try {
-      const id = req.params.id as string;
+    await prisma.$transaction(
+      async (tx) => {
+        const resources =
+          await tx.resource.findMany({
+            where: {
+              suids: {
+                has: student.suid,
+              },
+            },
+          });
 
-      await prisma.instructor.delete({
+        for (const resource of resources) {
+          const remainingSuids =
+            resource.suids.filter(
+              (suid) =>
+                suid !== student.suid
+            );
+
+          if (
+            remainingSuids.length === 0
+          ) {
+            await tx.resource.delete({
+              where: {
+                ruid: resource.ruid,
+              },
+            });
+          } else {
+            await tx.resource.update({
+              where: {
+                ruid: resource.ruid,
+              },
+              data: {
+                suids:
+                  remainingSuids,
+              },
+            });
+          }
+        }
+
+        await tx.student.delete({
+          where: { id },
+        });
+      }
+    );
+
+    return res.json({
+      success: true,
+      message: "Student removed",
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Unable to remove student",
+    });
+  }
+};
+
+export const deleteInstructor = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const id = req.params.id as string;
+
+    const instructor =
+      await prisma.instructor.findUnique({
         where: { id },
+        select: {
+          iuid: true,
+        },
       });
 
-      return res.json({
-        success: true,
-        message:
-          "Instructor removed",
-      });
-    } catch (error) {
-      console.error(error);
-
-      return res.status(500).json({
+    if (!instructor) {
+      return res.status(404).json({
         success: false,
-        message:
-          "Unable to remove instructor",
+        message: "Instructor not found",
       });
     }
-  };
+
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.task.deleteMany({
+          where: {
+            iuid: instructor.iuid,
+          },
+        });
+
+        await tx.resource.deleteMany({
+          where: {
+            iuid: instructor.iuid,
+          },
+        });
+
+        await tx.instructor.delete({
+          where: { id },
+        });
+      }
+    );
+
+    return res.json({
+      success: true,
+      message: "Instructor removed",
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Unable to remove instructor",
+    });
+  }
+};
 
 export const getApprovedStudents =
   async (

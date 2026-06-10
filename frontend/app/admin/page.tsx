@@ -118,12 +118,7 @@ export default function AdminPage() {
     router,
   ]);
 
-  if (
-    authLoading ||
-    loading ||
-    !user ||
-    user.role !== "admin"
-  ) {
+  if (loading) {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin" />
