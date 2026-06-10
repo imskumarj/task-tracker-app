@@ -59,3 +59,30 @@ model Student {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model Task {
+  id          String   @id @default(cuid())
+  tuid        String   @unique
+  iuid        String
+  suid        String
+  title       String
+  content     String?
+  documentUrl String?
+  status      String
+  submissions Json
+  evaluations Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Resource {
+  id          String   @id @default(cuid())
+  ruid        String   @unique
+  iuid        String
+  title       String
+  content     String?
+  documentUrl String?
+  suids       String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

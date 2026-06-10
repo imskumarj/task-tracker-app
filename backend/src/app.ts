@@ -4,7 +4,7 @@ import cors from "cors";
 import authRoutes from "./routes/auth";
 import adminRoutes from "./routes/admin";
 import studentRoutes from "./routes/student";
-// import instructorRoutes from "./routes/instructors";
+import instructorRoutes from "./routes/instructor";
 // import taskRoutes from "./routes/tasks";
 // import resourceRoutes from "./routes/resources";
 // import uploadRoutes from "./routes/uploads";
@@ -72,10 +72,10 @@ app.use(
 |--------------------------------------------------------------------------
 */
 
-// app.use(
-//   "/api/instructors",
-//   instructorRoutes
-// );
+app.use(
+  "/api/instructor",
+  instructorRoutes
+);
 
 /*
 |--------------------------------------------------------------------------
