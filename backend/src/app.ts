@@ -14,6 +14,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
+      "https://dvqsr6iahj4e6.cloudfront.net",
     ],
     credentials: true,
   })

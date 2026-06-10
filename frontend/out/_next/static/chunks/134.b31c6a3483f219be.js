@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[134],{2134:(e,r,l)=>{l.r(r),l.d(r,{default:()=>a});var s=l(5155);function a(e){let{url:r}=e;return(0,s.jsx)("div",{className:"border rounded-lg overflow-hidden",children:(0,s.jsx)("iframe",{src:r,className:"w-full h-[700px]",title:"PDF Viewer"})})}}}]);

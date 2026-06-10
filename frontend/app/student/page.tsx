@@ -239,7 +239,7 @@ export default function StudentPage() {
           <p className="mt-3 text-muted-foreground">
             Your account is awaiting
             approval from the organisation.
-            Once approved, you'll gain
+            Once approved, you will gain
             access to tasks, resources,
             and submissions.
           </p>
@@ -640,7 +640,7 @@ export default function StudentPage() {
 
                   <p className="text-sm text-muted-foreground">
                     Your instructors
-                    haven't shared any
+                    have not shared any
                     resources yet.
                   </p>
                 </Card>
