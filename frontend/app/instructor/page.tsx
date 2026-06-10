@@ -118,6 +118,17 @@ export default function InstructorPage() {
   const [expandedTasks, setExpandedTasks] =
     useState<string[]>([]);
 
+  const [expandedResources, setExpandedResources] =
+  useState<string[]>([]);
+
+  const toggleResource = (id: string) => {
+    setExpandedResources((prev) =>
+      prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id]
+    );
+  };
+
   const [expandedSubmissions, setExpandedSubmissions] =
     useState<string[]>([]);
 
@@ -756,16 +767,70 @@ export default function InstructorPage() {
 
                       <Card
                         key={resource.ruid}
-                        className="p-5"
+                        className="overflow-hidden"
                       >
 
-                        <div className="flex justify-between gap-4">
+                        <button
+                          onClick={() =>
+                            toggleResource(
+                              resource.ruid
+                            )
+                          }
+                          className="
+                            w-full
+                            p-5
+                            flex
+                            justify-between
+                            items-center
+                            text-left
+                            hover:bg-muted/30
+                            transition
+                          "
+                        >
 
-                          <div className="flex-1">
+                          <div>
 
                             <h3 className="font-semibold">
                               {resource.title}
                             </h3>
+
+                            <div className="mt-2">
+
+                              {resource.suids?.length ? (
+
+                                <Badge variant="secondary">
+                                  {resource.suids.length}
+                                  {" "}
+                                  Students
+                                </Badge>
+
+                              ) : (
+
+                                <Badge>
+                                  All Students
+                                </Badge>
+
+                              )}
+
+                            </div>
+
+                          </div>
+
+                          {expandedResources.includes(
+                            resource.ruid
+                          ) ? (
+                            <ChevronUp />
+                          ) : (
+                            <ChevronDown />
+                          )}
+
+                        </button>
+
+                        {expandedResources.includes(
+                          resource.ruid
+                        ) && (
+
+                          <div className="px-5 pb-5">
 
                             {resource.content && (
 
@@ -822,44 +887,49 @@ export default function InstructorPage() {
 
                             )}
 
+                            <div className="mt-4">
+
+                              <Button
+                                variant="destructive"
+                                onClick={async () => {
+
+                                  if (
+                                    !confirm(
+                                      "Delete resource?"
+                                    )
+                                  )
+                                    return;
+
+                                  try {
+
+                                    await deleteResource(
+                                      resource.ruid
+                                    );
+
+                                    toast.success(
+                                      "Resource deleted"
+                                    );
+
+                                    loadData();
+
+                                  } catch {
+
+                                    toast.error(
+                                      "Unable to delete resource"
+                                    );
+
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </Button>
+
+                            </div>
+
                           </div>
 
-                          <Button
-                            variant="destructive"
-                            onClick={async () => {
-
-                              if (
-                                !confirm(
-                                  "Delete resource?"
-                                )
-                              )
-                                return;
-
-                              try {
-
-                                await deleteResource(
-                                  resource.ruid
-                                );
-
-                                toast.success(
-                                  "Resource deleted"
-                                );
-
-                                loadData();
-
-                              } catch {
-
-                                toast.error(
-                                  "Unable to delete resource"
-                                );
-
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-
-                        </div>
+                        )}
 
                       </Card>
 

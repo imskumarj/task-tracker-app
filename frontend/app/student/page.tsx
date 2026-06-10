@@ -30,6 +30,8 @@ import {
   Clock3,
   RefreshCcw,
   LogOut,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -50,6 +52,15 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingScreen } from "@/components/common/LoadingScreen";
 
 import SubmitTaskModal from "@/components/student/SubmitTaskModal";
+
+import dynamic from "next/dynamic";
+
+const PdfViewer = dynamic(
+  () => import("@/components/PdfViewer"),
+  {
+    ssr: false,
+  }
+);
 
 type TaskFilter =
   | "all"
@@ -82,6 +93,28 @@ export default function StudentPage() {
 
   const [taskFilter, setTaskFilter] =
     useState<TaskFilter>("all");
+
+  const [expandedTasks, setExpandedTasks] =
+    useState<string[]>([]);
+
+  const [expandedResources, setExpandedResources] =
+    useState<string[]>([]);
+
+  const toggleTask = (id: string) => {
+    setExpandedTasks((prev) =>
+      prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id]
+    );
+  };
+
+  const toggleResource = (id: string) => {
+    setExpandedResources((prev) =>
+      prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id]
+    );
+  };
 
   const loadData = async () => {
     try {
@@ -376,155 +409,191 @@ export default function StudentPage() {
                       return (
                         <Card
                           key={task.tuid}
-                          className="p-5"
+                          className="overflow-hidden"
                         >
-                          <div className="flex flex-col gap-4">
 
-                            {/* Header */}
+                          <button
+                            onClick={() =>
+                              toggleTask(task.tuid)
+                            }
+                            className="
+                              w-full
+                              p-5
+                              flex
+                              justify-between
+                              items-center
+                              text-left
+                              hover:bg-muted/30
+                              transition
+                            "
+                          >
 
-                            <div className="flex flex-wrap justify-between gap-3">
-                              <div>
-                                <h3 className="font-semibold text-lg">
-                                  {task.title}
-                                </h3>
+                            <div>
 
-                                <p className="text-xs text-muted-foreground">
-                                  Assigned by{" "}
-                                  {
-                                    task
-                                      .instructor
-                                      ?.name
-                                  }
-                                </p>
-                              </div>
+                              <h3 className="font-semibold text-lg">
+                                {task.title}
+                              </h3>
 
-                              <div>
-
-                                {task.status ===
-                                  "assigned" && (
-                                  <Badge variant="secondary">
-                                    Pending
-                                  </Badge>
-                                )}
-
-                                {task.status ===
-                                  "submitted" && (
-                                  <Badge>
-                                    Submitted
-                                  </Badge>
-                                )}
-
-                                {task.status ===
-                                  "resubmit" && (
-                                  <Badge
-                                    variant="outline"
-                                  >
-                                    Resubmit
-                                  </Badge>
-                                )}
-
-                                {task.status ===
-                                  "evaluated" && (
-                                  <Badge>
-                                    Evaluated
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Content */}
-
-                            {task.content && (
-                              <p className="text-sm whitespace-pre-wrap">
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Assigned by{" "}
                                 {
-                                  task.content
+                                  task.instructor?.name
                                 }
                               </p>
-                            )}
 
-                            {/* Attachment */}
+                            </div>
 
-                            {task.document_url && (
-                              <a
-                                href={
-                                  task.document_url
-                                }
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-sm text-primary hover:underline inline-flex items-center gap-2"
-                              >
-                                <FileText className="h-4 w-4" />
-                                Open Task
-                                Attachment
-                              </a>
-                            )}
-
-                            {/* Evaluation */}
-
-                            {latestEvaluation && (
-                              <div className="border rounded-lg p-4 bg-muted/40">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-
-                                  <span className="font-medium">
-                                    Instructor
-                                    Evaluation
-                                  </span>
-                                </div>
-
-                                <p className="text-sm whitespace-pre-wrap">
-                                  {
-                                    latestEvaluation.remarks
-                                  }
-                                </p>
-                              </div>
-                            )}
-
-                            {/* Footer */}
-
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex items-center gap-3">
 
                               {task.status ===
                                 "assigned" && (
-                                <SubmitTaskModal
-                                  task={task}
-                                  onSuccess={
-                                    loadData
-                                  }
-                                />
+                                <Badge variant="secondary">
+                                  Pending
+                                </Badge>
                               )}
 
                               {task.status ===
                                 "submitted" && (
-                                <Button
-                                  disabled
-                                >
-                                  Waiting
-                                  for Review
-                                </Button>
+                                <Badge>
+                                  Submitted
+                                </Badge>
                               )}
 
                               {task.status ===
                                 "resubmit" && (
-                                <SubmitTaskModal
-                                  task={task}
-                                  onSuccess={
-                                    loadData
-                                  }
-                                  resubmit
-                                />
+                                <Badge
+                                  variant="outline"
+                                >
+                                  Resubmit
+                                </Badge>
                               )}
 
                               {task.status ===
                                 "evaluated" && (
-                                <Button
-                                  disabled
-                                >
-                                  Completed
-                                </Button>
+                                <Badge>
+                                  Evaluated
+                                </Badge>
                               )}
+
+                              {expandedTasks.includes(
+                                task.tuid
+                              ) ? (
+                                <ChevronUp />
+                              ) : (
+                                <ChevronDown />
+                              )}
+
                             </div>
-                          </div>
+
+                          </button>
+
+                          {expandedTasks.includes(
+                            task.tuid
+                          ) && (
+
+                            <div className="px-5 pb-5">
+
+                              <div className="flex flex-col gap-4">
+
+                                {task.content && (
+
+                                  <p className="text-sm whitespace-pre-wrap">
+                                    {task.content}
+                                  </p>
+
+                                )}
+
+                                {task.document_url && (
+
+                                  <div className="space-y-3">
+
+                                    <p className="text-sm font-medium">
+                                      Attachment
+                                    </p>
+
+                                    <PdfViewer
+                                      url={
+                                        task.document_url
+                                      }
+                                    />
+
+                                  </div>
+
+                                )}
+
+                                {latestEvaluation && (
+
+                                  <div className="border rounded-lg p-4 bg-muted/40">
+
+                                    <div className="flex items-center gap-2 mb-2">
+
+                                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+
+                                      <span className="font-medium">
+                                        Instructor Evaluation
+                                      </span>
+
+                                    </div>
+
+                                    <p className="text-sm whitespace-pre-wrap">
+                                      {
+                                        latestEvaluation.remarks
+                                      }
+                                    </p>
+
+                                  </div>
+
+                                )}
+
+                                <div className="flex flex-wrap gap-2">
+
+                                  {task.status ===
+                                    "assigned" && (
+
+                                    <SubmitTaskModal
+                                      task={task}
+                                      onSuccess={loadData}
+                                    />
+
+                                  )}
+
+                                  {task.status ===
+                                    "submitted" && (
+
+                                    <Button disabled>
+                                      Waiting for Review
+                                    </Button>
+
+                                  )}
+
+                                  {task.status ===
+                                    "resubmit" && (
+
+                                    <SubmitTaskModal
+                                      task={task}
+                                      onSuccess={loadData}
+                                      resubmit
+                                    />
+
+                                  )}
+
+                                  {task.status ===
+                                    "evaluated" && (
+
+                                    <Button disabled>
+                                      Completed
+                                    </Button>
+
+                                  )}
+
+                                </div>
+
+                              </div>
+
+                            </div>
+
+                          )}
+
                         </Card>
                       );
                     }
@@ -558,54 +627,84 @@ export default function StudentPage() {
                 resources.map(
                   (resource) => (
                     <Card
-                      key={
-                        resource.ruid
-                      }
-                      className="p-5"
+                      key={resource.ruid}
+                      className="overflow-hidden"
                     >
-                      <div className="flex gap-4">
-                        <BookOpen className="h-8 w-8 text-primary mt-1" />
 
-                        <div className="flex-1">
+                      <button
+                        onClick={() =>
+                          toggleResource(
+                            resource.ruid
+                          )
+                        }
+                        className="
+                          w-full
+                          p-5
+                          flex
+                          justify-between
+                          items-center
+                          text-left
+                          hover:bg-muted/30
+                          transition
+                        "
+                      >
+
+                        <div>
+
                           <h3 className="font-semibold">
-                            {
-                              resource.title
-                            }
+                            {resource.title}
                           </h3>
 
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground mt-1">
                             Shared by{" "}
                             {
-                              resource
-                                .instructor
+                              resource.instructor
                                 ?.name
                             }
                           </p>
 
+                        </div>
+
+                        {expandedResources.includes(
+                          resource.ruid
+                        ) ? (
+                          <ChevronUp />
+                        ) : (
+                          <ChevronDown />
+                        )}
+
+                      </button>
+
+                      {expandedResources.includes(
+                        resource.ruid
+                      ) && (
+
+                        <div className="px-5 pb-5">
+
                           {resource.description && (
-                            <p className="mt-3 text-sm">
+
+                            <p className="text-sm whitespace-pre-wrap mb-4">
                               {
                                 resource.description
                               }
                             </p>
+
                           )}
 
                           {resource.document_url && (
-                            <a
-                              href={
+
+                            <PdfViewer
+                              url={
                                 resource.document_url
                               }
-                              target="_blank"
-                              rel="noreferrer"
-                              className="mt-3 inline-flex items-center gap-2 text-primary hover:underline"
-                            >
-                              <FileText className="h-4 w-4" />
-                              Open
-                              Resource
-                            </a>
+                            />
+
                           )}
+
                         </div>
-                      </div>
+
+                      )}
+
                     </Card>
                   )
                 )
