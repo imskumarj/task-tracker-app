@@ -9,6 +9,11 @@ import {
   getStudentProfile,
 } from "../controllers/student";
 
+import {
+  getStudentTasks,
+  submitTask,
+} from "../controllers/task";
+
 const router = Router();
 
 router.get(
@@ -16,6 +21,20 @@ router.get(
   authenticate,
   requireStudent,
   getStudentProfile
+);
+
+router.get(
+  "/tasks",
+  authenticate,
+  requireStudent,
+  getStudentTasks
+);
+
+router.post(
+  "/tasks/:id/submit",
+  authenticate,
+  requireStudent,
+  submitTask
 );
 
 export default router;

@@ -72,11 +72,13 @@ export default function SubmitTaskModal({
         documentUrl = await uploadTaskDocument(file);
       }
 
-      await submitTask({
-        tuid: task.tuid,
-        content: content.trim(),
-        documentUrl,
-      });
+      await submitTask(
+        task.tuid,
+        {
+          content: content.trim(),
+          documentUrl,
+        }
+      ); 
 
       toast.success(
         resubmit

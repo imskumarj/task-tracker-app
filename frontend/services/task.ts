@@ -1,91 +1,69 @@
 import { api } from "./api";
 
-export interface TaskSubmission {
-  suid: string;
-  name: string;
-  content?: string;
-  document_url?: string;
-  submitted_at?: string;
-}
-
-export interface TaskEvaluation {
-  remarks: string;
-  created_at?: string;
-}
-
-export interface TaskInstructor {
-  iuid: string;
-  name: string;
-}
-
 export interface StudentTask {
   tuid: string;
-  iuid: string;
-  suid: string;
 
   title: string;
-  content: string;
+
+  content?: string;
 
   document_url?: string;
 
   status:
     | "assigned"
     | "submitted"
-    | "evaluated"
-    | "resubmit";
+    | "resubmit"
+    | "evaluated";
 
-  instructor: TaskInstructor;
+  instructor?: {
+    iuid: string;
+    name: string;
+  };
 
-  submissions: TaskSubmission[];
+  submissions?: any[];
 
-  evaluations: TaskEvaluation[];
-}
+  evaluations?: any[];
 
-export interface StudentTasksResponse {
-  success: boolean;
-  tasks: StudentTask[];
+  createdAt?: string;
+
+  updatedAt?: string;
 }
 
 export const getStudentTasks =
-  async (): Promise<StudentTasksResponse> => {
-    const { data } = await api.get(
-      "/tasks/student"
-    );
+  async () => {
+    const { data } =
+      await api.get(
+        "/student/tasks"
+      );
 
     return data;
   };
 
-export interface SubmitTaskPayload {
-  tuid: string;
-  content?: string;
-  documentUrl?: string;
-}
-
 export const submitTask =
-  async ({
-    tuid,
-    content,
-    documentUrl,
-  }: SubmitTaskPayload) => {
-
+  async (
+    taskId: string,
+    payload: {
+      content?: string;
+      documentUrl?: string;
+    }
+  ) => {
     const { data } =
       await api.post(
-        `/tasks/${tuid}/submit`,
-        {
-          content,
-          document_url:
-            documentUrl,
-        }
+        `/student/tasks/${taskId}/submit`,
+        payload
       );
 
     return data;
   };
 
 export const getTaskById =
-  async (tuid: string) => {
-    const { data } = await api.get(
-      `/tasks/${tuid}`
-    );
+  async (
+    taskId: string
+  ) => {
+    const { data } =
+      await api.get(
+        `/student/tasks/${taskId}`
+      );
 
     return data;
   };
