@@ -26,6 +26,8 @@ import {
   Loader2,
   Clock3,
   Plus,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -112,6 +114,33 @@ export default function InstructorPage() {
 
   const [editingTask, setEditingTask] =
     useState<any>(null);
+
+  const [expandedTasks, setExpandedTasks] =
+    useState<string[]>([]);
+
+  const [expandedSubmissions, setExpandedSubmissions] =
+    useState<string[]>([]);
+
+  const toggleTask = (id: string) => {
+    setExpandedTasks((prev) =>
+      prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id]
+    );
+  };
+
+  const toggleSubmission = (
+    id: string
+  ) => {
+    setExpandedSubmissions(
+      (prev) =>
+        prev.includes(id)
+          ? prev.filter(
+              (x) => x !== id
+            )
+          : [...prev, id]
+    );
+  };
 
   const loadData = async () => {
     try {
@@ -300,7 +329,7 @@ export default function InstructorPage() {
             </TabsTrigger>
 
           </TabsList>
-                    {/* TASKS TAB */}
+          {/* TASKS TAB */}
 
           <TabsContent value="tasks">
 
@@ -345,107 +374,139 @@ export default function InstructorPage() {
                     const assignedStudents =
                       task.assignedStudents || [];
 
+                    const isEvaluated =
+                      task.status === "evaluated";
+
                     return (
 
                       <Card
                         key={task.tuid}
-                        className="p-5"
+                        className="overflow-hidden"
                       >
 
-                        <div className="flex flex-col gap-4">
+                        <button
+                          onClick={() =>
+                            toggleTask(task.tuid)
+                          }
+                          className="
+                            w-full
+                            p-5
+                            flex
+                            justify-between
+                            items-center
+                            text-left
+                            hover:bg-muted/30
+                            transition
+                          "
+                        >
 
-                          {/* HEADER */}
+                          <div>
 
-                          <div className="flex justify-between gap-4 flex-wrap">
+                            <h3 className="font-semibold text-lg">
+                              {task.title}
+                            </h3>
 
-                            <div>
+                            <div className="flex flex-wrap gap-2 mt-2">
 
-                              <h3 className="font-semibold text-lg">
-                                {task.title}
-                              </h3>
+                              <Badge variant="outline">
+                                {task.status.replace(/\b\w/g, (char: string) => char.toUpperCase())}
+                              </Badge>
 
-                              <div className="flex flex-wrap gap-2 mt-2">
+                              {task.assignAll ? (
 
-                                <Badge
-                                  variant="outline"
-                                >
-                                  {task.status}
+                                <Badge>
+                                  All Students
                                 </Badge>
 
-                                {task.assignAll ? (
+                              ) : (
 
-                                  <Badge>
-                                    All Students
-                                  </Badge>
+                                <Badge variant="secondary">
+                                  {
+                                    assignedStudents.length
+                                  }{" "}
+                                  Students
+                                </Badge>
 
-                                ) : (
+                              )}
 
-                                  <Badge variant="secondary">
-                                    {
-                                      assignedStudents.length
-                                    }{" "}
-                                    Students
-                                  </Badge>
+                            </div>
 
-                                )}
+                          </div>
+
+                          {expandedTasks.includes(
+                            task.tuid
+                          ) ? (
+                            <ChevronUp />
+                          ) : (
+                            <ChevronDown />
+                          )}
+
+                        </button>
+
+                        {expandedTasks.includes(
+                          task.tuid
+                        ) && (
+
+                          <div className="px-5 pb-5">
+
+                            <div className="flex flex-col gap-4">
+
+                              <div className="flex gap-2">
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={
+                                    isEvaluated
+                                  }
+                                  onClick={() => {
+                                    setEditingTask(
+                                      task
+                                    );
+
+                                    setTaskModalOpen(
+                                      true
+                                    );
+                                  }}
+                                >
+                                  Edit
+                                </Button>
+
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={async () => {
+                                    const confirmed =
+                                      window.confirm(
+                                        "Delete task permanently?"
+                                      );
+
+                                    if (
+                                      !confirmed
+                                    )
+                                      return;
+
+                                    try {
+                                      await deleteTask(
+                                        task.tuid
+                                      );
+
+                                      toast.success(
+                                        "Task deleted"
+                                      );
+
+                                      loadData();
+                                    } catch {
+                                      toast.error(
+                                        "Unable to delete task"
+                                      );
+                                    }
+                                  }}
+                                >
+                                  Delete
+                                </Button>
 
                               </div>
-
-                            </div>
-
-                            <div className="flex gap-2">
-
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingTask(
-                                    task
-                                  );
-
-                                  setTaskModalOpen(
-                                    true
-                                  );
-                                }}
-                              >
-                                Edit
-                              </Button>
-
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={async () => {
-                                  const confirmed =
-                                    window.confirm(
-                                      "Delete task permanently?"
-                                    );
-
-                                  if (
-                                    !confirmed
-                                  )
-                                    return;
-
-                                  try {
-                                    await deleteTask(
-                                      task.tuid
-                                    );
-
-                                    toast.success(
-                                      "Task deleted"
-                                    );
-
-                                    loadData();
-                                  } catch {
-                                    toast.error(
-                                      "Unable to delete task"
-                                    );
-                                  }
-                                }}
-                              >
-                                Delete
-                              </Button>
-
-                            </div>
 
                           </div>
 
@@ -453,7 +514,7 @@ export default function InstructorPage() {
 
                           {task.content && (
 
-                            <p className="text-sm whitespace-pre-wrap">
+                            <p className="text-sm whitespace-pre-wrap py-2">
                               {task.content}
                             </p>
 
@@ -522,7 +583,7 @@ export default function InstructorPage() {
 
                           {/* COUNTS */}
 
-                          <div className="grid md:grid-cols-3 gap-3">
+                          <div className="grid md:grid-cols-3 gap-3 my-4">
 
                             <Card className="p-4">
 
@@ -571,9 +632,8 @@ export default function InstructorPage() {
                           </div>
 
                         </div>
-
+                        )}
                       </Card>
-
                     );
                   })}
 
@@ -594,7 +654,7 @@ export default function InstructorPage() {
             </div>
 
           </TabsContent>
-                    {/* SUBMISSIONS TAB */}
+          {/* SUBMISSIONS TAB */}
 
           <TabsContent value="submissions">
 
@@ -1017,6 +1077,15 @@ function SubmissionCard({
         ""
     );
 
+  const isClosed =
+    submission.status ===
+      "evaluated" ||
+    submission.status ===
+      "resubmit";
+  
+  const [expanded, setExpanded] =
+    useState(false);
+
   const [busy, setBusy] =
     useState(false);
 
@@ -1057,209 +1126,223 @@ function SubmissionCard({
 
   return (
 
-    <Card className="p-5">
+    <Card>
 
-      <div className="space-y-4">
+    <button
+      onClick={() =>
+        setExpanded(!expanded)
+      }
+      className="
+        w-full
+        p-5
+        flex
+        justify-between
+        items-center
+        text-left
+      "
+    >
+      <div>
+        <h3 className="font-semibold">
+          {submission.title}
+        </h3>
 
-        {/* HEADER */}
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
 
-        <div className="flex justify-between gap-3 flex-wrap">
+          <span className="text-xs text-muted-foreground">
+            {submission.studentName}
+            {" • "}
+            {submission.suid}
+          </span>
 
-          <div>
+          {submission.status ===
+            "submitted" && (
+            <Badge>
+              Awaiting Review
+            </Badge>
+          )}
 
-            <h3 className="font-semibold">
-              {submission.title}
-            </h3>
+          {submission.status ===
+            "evaluated" && (
+            <Badge>
+              Evaluated
+            </Badge>
+          )}
 
-            <p className="text-xs text-muted-foreground">
-
-              Student:
-
-              {" "}
-
-              {
-                submission.studentName
-              }
-
-              {" • "}
-
-              {
-                submission.suid
-              }
-
-            </p>
-
-          </div>
-
-          <div>
-
-            {submission.status ===
-              "submitted" && (
-
-              <Badge>
-                Awaiting Review
-              </Badge>
-
-            )}
-
-            {submission.status ===
-              "evaluated" && (
-
-              <Badge>
-                Evaluated
-              </Badge>
-
-            )}
-
-            {submission.status ===
-              "resubmit" && (
-
-              <Badge
-                variant="outline"
-              >
-                Resubmit
-              </Badge>
-
-            )}
-
-          </div>
-
-        </div>
-
-        {/* STUDENT TEXT */}
-
-        {latestSubmission
-          ?.content && (
-
-          <div>
-
-            <p className="text-sm font-medium mb-2">
-              Submission Text
-            </p>
-
-            <div className="border rounded-lg p-4 bg-muted/30">
-
-              <p className="text-sm whitespace-pre-wrap">
-                {
-                  latestSubmission.content
-                }
-              </p>
-
-            </div>
-
-          </div>
-
-        )}
-
-        {/* PDF */}
-
-        {latestSubmission
-          ?.documentUrl && (
-
-          <div>
-
-            <p className="text-sm font-medium mb-2">
-              Submitted PDF
-            </p>
-
-            <PdfViewer
-              url={
-                latestSubmission.documentUrl
-              }
-            />
-
-          </div>
-
-        )}
-
-        {/* OLD EVALUATION */}
-
-        {latestEvaluation && (
-
-          <div className="border rounded-lg p-4 bg-muted/40">
-
-            <p className="font-medium mb-2">
-              Previous Evaluation
-            </p>
-
-            <p className="text-sm">
-              {
-                latestEvaluation.remarks
-              }
-            </p>
-
-          </div>
-
-        )}
-
-        {/* REMARKS */}
-
-        <div>
-
-          <label className="text-sm font-medium">
-            Remarks
-          </label>
-
-          <textarea
-            value={remarks}
-            onChange={(e) =>
-              setRemarks(
-                e.target.value
-              )
-            }
-            className="
-              mt-2
-              w-full
-              border
-              rounded-lg
-              p-3
-              min-h-[120px]
-            "
-          />
-
-        </div>
-
-        {/* ACTIONS */}
-
-        <div className="flex gap-3 flex-wrap">
-
-          <Button
-            disabled={busy}
-            onClick={() =>
-              evaluate(
-                "evaluated"
-              )
-            }
-          >
-            {busy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Evaluate
-              </>
-            )}
-          </Button>
-
-          <Button
-            variant="outline"
-            disabled={busy}
-            onClick={() =>
-              evaluate(
-                "resubmit"
-              )
-            }
-          >
-            Request Resubmission
-          </Button>
+          {submission.status ===
+            "resubmit" && (
+            <Badge
+              variant="outline"
+            >
+              Resubmit
+            </Badge>
+          )}
 
         </div>
 
       </div>
 
-    </Card>
+      {expanded ? (
+        <ChevronUp />
+      ) : (
+        <ChevronDown />
+      )}
+    </button>
 
-  );
+    {expanded && (
+      <div className="px-5 pb-5">
+
+        <div className="space-y-4">
+          {/* STUDENT TEXT */}
+
+          {latestSubmission
+            ?.content && (
+
+            <div>
+
+              <p className="text-sm font-medium mb-2">
+                Submission Text
+              </p>
+
+              <div className="border rounded-lg p-4 bg-muted/30">
+
+                <p className="text-sm whitespace-pre-wrap">
+                  {
+                    latestSubmission.content
+                  }
+                </p>
+
+              </div>
+
+            </div>
+
+          )}
+
+          {/* PDF */}
+
+          {latestSubmission
+            ?.documentUrl && (
+
+            <div>
+
+              <p className="text-sm font-medium mb-2">
+                Submitted PDF
+              </p>
+
+              <PdfViewer
+                url={
+                  latestSubmission.documentUrl
+                }
+              />
+
+            </div>
+
+          )}
+
+          {/* OLD EVALUATION */}
+
+          {latestEvaluation && (
+
+            <div className="border rounded-lg p-4 bg-muted/40">
+
+              <p className="font-medium mb-2">
+                Previous Evaluation
+              </p>
+
+              <p className="text-sm">
+                {
+                  latestEvaluation.remarks
+                }
+              </p>
+
+            </div>
+
+          )}
+
+          {/* REMARKS */}
+
+          {!isClosed && (
+            <div>
+
+              <label className="text-sm font-medium">
+                Remarks
+              </label>
+
+              <textarea
+                value={remarks}
+                onChange={(e) =>
+                  setRemarks(e.target.value)
+                }
+                className="
+                  mt-2
+                  w-full
+                  border
+                  rounded-lg
+                  p-3
+                  min-h-[120px]
+                "
+              />
+
+            </div>
+          )}
+
+          {/* ACTIONS */}
+
+          <div className="flex gap-3 flex-wrap">
+
+            <Button
+              disabled={busy || isClosed}
+              onClick={() =>
+                evaluate(
+                  "evaluated"
+                )
+              }
+            >
+              {busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Evaluate
+                </>
+              )}
+            </Button>
+
+            <Button
+              variant="outline"
+              disabled={busy || isClosed}
+              onClick={() =>
+                evaluate(
+                  "resubmit"
+                )
+              }
+            >
+              Request Resubmission
+            </Button>
+
+          </div>
+
+          {isClosed && (
+            <div
+              className="
+                border
+                border-amber-300
+                bg-amber-50
+                rounded-lg
+                p-3
+                text-sm
+              "
+            >
+              {submission.status ===
+                "evaluated"
+                  ? "This submission has already been evaluated and locked."
+                  : "This submission has already been reviewed and marked for resubmission."}
+            </div>
+          )}
+          </div>
+      </div>
+    )}
+  </Card>
+ );
 }
 
 function CreateResourceDialog({
@@ -1278,6 +1361,9 @@ function CreateResourceDialog({
   const [file, setFile] =
     useState<File | null>(null);
 
+  const [assignAll, setAssignAll] =
+    useState(true);
+
   const [selectedSuids, setSelectedSuids] =
     useState<string[]>([]);
 
@@ -1287,6 +1373,17 @@ function CreateResourceDialog({
   const save = async () => {
 
     try {
+
+      if (
+        !assignAll &&
+        selectedSuids.length === 0
+      ) {
+        toast.error(
+          "Select at least one student"
+        );
+
+        return;
+      }
 
       setBusy(true);
 
@@ -1303,8 +1400,10 @@ function CreateResourceDialog({
         title,
         content,
         documentUrl,
-        suids:
-          selectedSuids,
+
+        suids: assignAll
+          ? []
+          : selectedSuids,
       });
 
       toast.success(
@@ -1356,6 +1455,7 @@ function CreateResourceDialog({
           />
 
           <textarea
+            placeholder="Content (optional)"
             value={content}
             onChange={(e) =>
               setContent(
@@ -1382,67 +1482,99 @@ function CreateResourceDialog({
             }
           />
 
-          <div className="border rounded-lg p-4 max-h-60 overflow-y-auto">
+          <div className="space-y-3">
+            <label className="text-sm font-medium">
+              Assign Resource
+            </label>
 
-            {students.map(
-              (
-                student: any
-              ) => (
+            <div className="flex gap-6">
 
-                <label
-                  key={
-                    student.suid
+              <label className="flex items-center gap-2">
+
+                <input
+                  type="radio"
+                  checked={assignAll}
+                  onChange={() =>
+                    setAssignAll(true)
                   }
-                  className="flex gap-2 py-2"
-                >
+                />
 
-                  <input
-                    type="checkbox"
-                    checked={selectedSuids.includes(
-                      student.suid
-                    )}
-                    onChange={(e) => {
+                All Students
 
-                      if (
-                        e.target.checked
-                      ) {
+              </label>
 
-                        setSelectedSuids(
-                          [
-                            ...selectedSuids,
-                            student.suid,
-                          ]
-                        );
+              <label className="flex items-center gap-2">
 
-                      } else {
-
-                        setSelectedSuids(
-                          selectedSuids.filter(
-                            (
-                              s
-                            ) =>
-                              s !==
-                              student.suid
-                          )
-                        );
-
-                      }
-                    }}
-                  />
-
-                  {student.name}
-                  {" ("}
-                  {
-                    student.suid
+                <input
+                  type="radio"
+                  checked={!assignAll}
+                  onChange={() =>
+                    setAssignAll(false)
                   }
-                  {")"}
+                />
 
-                </label>
+                Select Students
 
-              )
-            )}
+              </label>
+
+            </div>
 
           </div>
+
+          {!assignAll && (
+            <div className="border rounded-lg p-4 max-h-60 overflow-y-auto">
+
+              {students.map(
+                (student: any) => (
+
+                  <label
+                    key={student.suid}
+                    className="flex gap-2 py-2"
+                  >
+
+                    <input
+                      type="checkbox"
+                      checked={selectedSuids.includes(
+                        student.suid
+                      )}
+                      onChange={(e) => {
+
+                        if (
+                          e.target.checked
+                        ) {
+
+                          setSelectedSuids([
+                            ...selectedSuids,
+                            student.suid,
+                          ]);
+
+                        } else {
+
+                          setSelectedSuids(
+                            selectedSuids.filter(
+                              (s) =>
+                                s !==
+                                student.suid
+                            )
+                          );
+
+                        }
+                      }}
+                    />
+
+                    {student.name}
+                    {" ("}
+                    {student.suid}
+                    {")"}
+
+                  </label>
+
+                )
+              )}
+
+            </div>
+
+          )}
 
           <Button
             onClick={save}

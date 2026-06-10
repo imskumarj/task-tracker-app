@@ -5,8 +5,7 @@ import authRoutes from "./routes/auth";
 import adminRoutes from "./routes/admin";
 import studentRoutes from "./routes/student";
 import instructorRoutes from "./routes/instructor";
-// import taskRoutes from "./routes/tasks";
-// import resourceRoutes from "./routes/resources";
+import resourceRoutes from "./routes/resource";
 // import uploadRoutes from "./routes/uploads";
 
 const app = express();
@@ -79,25 +78,14 @@ app.use(
 
 /*
 |--------------------------------------------------------------------------
-| Tasks
-|--------------------------------------------------------------------------
-*/
-
-// app.use(
-//   "/api/tasks",
-//   taskRoutes
-// );
-
-/*
-|--------------------------------------------------------------------------
 | Resources
 |--------------------------------------------------------------------------
 */
 
-// app.use(
-//   "/api/resources",
-//   resourceRoutes
-// );
+app.use(
+  "/api/resources",
+  resourceRoutes
+);
 
 /*
 |--------------------------------------------------------------------------
