@@ -48,23 +48,41 @@ import {
 
 export default function AuthPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
-  const [tab, setTab] = useState("login");
+
+  const { user, loading } =
+    useAuth();
+
+  const [tab, setTab] =
+    useState("login");
 
   useEffect(() => {
     if (!loading && user) {
       if (user.role === "admin") {
-        router.push("/admin");
-      } else if (user.role === "instructor") {
-        router.push("/instructor");
-      } else if (user.role === "student") {
-        router.push("/student");
+        router.replace("/admin");
+      } else if (
+        user.role === "instructor"
+      ) {
+        router.replace(
+          "/instructor"
+        );
+      } else {
+        router.replace(
+          "/student"
+        );
       }
     }
   }, [user, loading, router]);
 
   if (loading) {
-    return <LoadingScreen label="Starting up" />;
+    return (
+      <LoadingScreen label="Starting up" />
+    );
+  }
+
+  if (user) {
+    return (
+      <LoadingScreen label="Redirecting..." />
+    );
   }
 
   return (
@@ -193,13 +211,13 @@ function LoginForm() {
       toast.success("Welcome back");
 
       if (data.user.role === "admin") {
-        router.push("/admin");
+        router.replace("/admin");
       } else if (
         data.user.role === "instructor"
       ) {
-        router.push("/instructor");
+        router.replace("/instructor");
       } else {
-        router.push("/student");
+        router.replace("/student");
       }
     } catch (error: any) {
         const message =

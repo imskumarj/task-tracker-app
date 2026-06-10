@@ -166,12 +166,28 @@ export default function StudentPage() {
   };
 
   useEffect(() => {
-    if (!loading && !authenticated) {
+    if (loading) return;
+
+    // not logged in
+    if (!authenticated || !user) {
       router.replace("/");
+      return;
+    }
+
+    // logged in but wrong role
+    if (user.role === "admin") {
+      router.replace("/admin");
+      return;
+    }
+
+    if (user.role === "instructor") {
+      router.replace("/instructor");
+      return;
     }
   }, [
     loading,
     authenticated,
+    user,
     router,
   ]);
 
@@ -192,7 +208,12 @@ export default function StudentPage() {
       );
     }, [tasks, taskFilter]);
 
-  if (loading || busy) {
+  if (
+    loading ||
+    busy ||
+    !user ||
+    user.role !== "student"
+  ) {
     return (
       <LoadingScreen label="Loading dashboard" />
     );

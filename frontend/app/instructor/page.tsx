@@ -199,25 +199,49 @@ export default function InstructorPage() {
   };
 
   useEffect(() => {
-    if (
-      !loading &&
-      !authenticated
-    ) {
+    if (loading) return;
+
+    // not logged in
+    if (!authenticated || !user) {
       router.replace("/");
+      return;
+    }
+
+    // logged in but wrong role
+    if (user.role === "student") {
+      router.replace("/student");
+      return;
+    }
+
+    if (user.role === "admin") {
+      router.replace("/admin");
+      return;
     }
   }, [
     loading,
     authenticated,
+    user,
     router,
   ]);
 
   useEffect(() => {
-    if (authenticated) {
+    if (
+      authenticated &&
+      user?.role === "instructor"
+    ) {
       loadData();
     }
-  }, [authenticated]);
+  }, [
+    authenticated,
+    user,
+  ]);
 
-  if (loading || busy) {
+  if (
+    loading ||
+    busy ||
+    !user ||
+    user.role !== "instructor"
+  ) {
     return (
       <LoadingScreen label="Loading instructor dashboard" />
     );

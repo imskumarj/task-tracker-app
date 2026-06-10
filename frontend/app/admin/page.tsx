@@ -5,6 +5,8 @@ import {
   useState,
 } from "react";
 
+import { useRouter } from "next/navigation";
+
 import {
   CheckCircle2,
   Trash2,
@@ -42,7 +44,14 @@ import {
 import { useAuth } from "@/context/AuthContext";
 
 export default function AdminPage() {
-  const { logout } = useAuth();
+  const router = useRouter();
+
+  const {
+    user,
+    loading: authLoading,
+    authenticated,
+    logout,
+  } = useAuth();
 
   const [students, setStudents] =
     useState<any[]>([]);
@@ -82,10 +91,39 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (authLoading) return;
 
-  if (loading) {
+    // not logged in
+    if (!authenticated || !user) {
+      router.replace("/");
+      return;
+    }
+
+    // wrong role
+    if (user.role === "student") {
+      router.replace("/student");
+      return;
+    }
+
+    if (user.role === "instructor") {
+      router.replace("/instructor");
+      return;
+    }
+
+    loadData();
+  }, [
+    authLoading,
+    authenticated,
+    user,
+    router,
+  ]);
+
+  if (
+    authLoading ||
+    loading ||
+    !user ||
+    user.role !== "admin"
+  ) {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin" />
