@@ -15,12 +15,6 @@ export const uploadFile = async (
     await api.post(
       "/files/upload",
       formData,
-      {
-        headers: {
-          "Content-Type":
-            "multipart/form-data",
-        },
-      }
     );
 
   return data.url;
